@@ -1,6 +1,7 @@
-package com.github.forax.einherjar;
+package com.github.forax.einherjar.core;
 
-import com.github.forax.einherjar.ValueTypeChecker.IssueReporter;
+import com.github.forax.einherjar.core.ValueTypeChecker.Issue;
+import com.github.forax.einherjar.core.ValueTypeChecker.IssueReporter;
 import org.junit.jupiter.api.Test;
 import org.objectweb.asm.ClassReader;
 
@@ -9,18 +10,6 @@ import java.io.IOException;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class ValueTypeCheckerTest {
-  static class EscapeThis {
-    public EscapeThis() {
-      System.out.println(this);
-    }
-  }
-
-  static class NoFinalField {
-    private int x;
-  }
-
-  // --- tests
-
   private static byte[] load(Class<?> clazz) throws IOException {
     var filename = clazz.getName().replace('.', '/') + ".class";
     byte[] code;
@@ -39,9 +28,15 @@ public class ValueTypeCheckerTest {
 
   @Test
   public void testEscapeThis() throws IOException {
+    class EscapeThis {
+      public EscapeThis() {
+        System.out.println(this);
+      }
+    }
+
     var issueReporterCalled = new Object() { boolean called; };
     IssueReporter issueReporter = (issue, className, message) -> {
-      assertEquals(ValueTypeChecker.Issue.THIS_ESCAPE, issue);
+      assertEquals(Issue.THIS_ESCAPE, issue);
       assertEquals(internalName(EscapeThis.class), className);
       issueReporterCalled.called = true;
     };
@@ -52,9 +47,13 @@ public class ValueTypeCheckerTest {
 
   @Test
   public void testNoFinalField() throws IOException {
+    class NoFinalField {
+      private int x;
+    }
+
     var issueReporterCalled = new Object() { boolean called; };
     IssueReporter issueReporter = (issue, className, message) -> {
-      assertEquals(ValueTypeChecker.Issue.NON_FINAL_FIELD, issue);
+      assertEquals(Issue.NON_FINAL_FIELD, issue);
       assertEquals(internalName(NoFinalField.class), className);
       issueReporterCalled.called = true;
     };

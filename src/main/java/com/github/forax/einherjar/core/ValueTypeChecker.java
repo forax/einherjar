@@ -1,4 +1,4 @@
-package com.github.forax.einherjar;
+package com.github.forax.einherjar.core;
 
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.FieldVisitor;

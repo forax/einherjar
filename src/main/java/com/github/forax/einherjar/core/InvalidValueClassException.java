@@ -1,4 +1,4 @@
-package com.github.forax.einherjar;
+package com.github.forax.einherjar.core;
 
 public final class InvalidValueClassException extends RuntimeException {
   public InvalidValueClassException(String message) {
