@@ -19,10 +19,19 @@ import java.util.List;
 
 import static org.objectweb.asm.Opcodes.ASM9;
 
+/**
+ * Checks that
+ * <ul>
+ *   <li>the super class is either j.l.Object, j.l.Number or j.l.Record
+ *   <li>all fields are final
+ *   <li>"this" does not escape the constructor
+ * </ul>
+ */
 public final class ValueTypeChecker extends ClassVisitor {
   private static final BasicValue THIS = new BasicValue(Type.getObjectType("java/lang/Object"));
 
   public enum Issue {
+    UNKNOWN_SUPER,
     THIS_ESCAPE,
     NON_FINAL_FIELD
   }
@@ -56,6 +65,14 @@ public final class ValueTypeChecker extends ClassVisitor {
     super.visit(version, access, name, signature, superName, interfaces);
     ownerClassName = name;
     superClassName = superName;
+    switch (superName) {
+      case "java/lang/Object":
+      case "java/lang/Number":
+      case "java/lang/Record":
+        break;
+      default:
+        issueReporter.report(Issue.UNKNOWN_SUPER, name , "super class " + superName + " is unknown");
+    }
   }
 
   @Override
@@ -66,6 +83,7 @@ public final class ValueTypeChecker extends ClassVisitor {
 
   @Override
   public FieldVisitor visitField(int access, String name, String descriptor, String signature, Object value) {
+    // all fields should be final
     if ((access & Opcodes.ACC_FINAL) == 0) {
       issueReporter.report(Issue.NON_FINAL_FIELD, ownerClassName , "field " + name + descriptor + " is not final");
     }
@@ -89,6 +107,8 @@ public final class ValueTypeChecker extends ClassVisitor {
 
           @Override
           public BasicValue copyOperation(AbstractInsnNode insn, BasicValue value) throws AnalyzerException {
+            // ALOAD_0 contains "this" once the super constructor is called
+            // and, we check that the slot 0 is not rewritten
             BasicValue result = super.copyOperation(insn, value);
             if (zeroContainsThis && insn instanceof VarInsnNode) {
               VarInsnNode varInsnNode = (VarInsnNode) insn;

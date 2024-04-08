@@ -27,6 +27,22 @@ public class ValueTypeCheckerTest {
   }
 
   @Test
+  public void testUnknownSuper() throws IOException {
+    class UnknownSuper extends ThreadLocal<String> {
+    }
+
+    var issueReporterCalled = new Object() { boolean called; };
+    IssueReporter issueReporter = (issue, className, message) -> {
+      assertEquals(Issue.UNKNOWN_SUPER, issue);
+      assertEquals(internalName(UnknownSuper.class), className);
+      issueReporterCalled.called = true;
+    };
+    var reader = new ClassReader(load(UnknownSuper.class));
+    reader.accept(new ValueTypeChecker(issueReporter, null), 0);
+    assertTrue(issueReporterCalled.called);
+  }
+
+  @Test
   public void testEscapeThis() throws IOException {
     class EscapeThis {
       public EscapeThis() {
@@ -60,5 +76,24 @@ public class ValueTypeCheckerTest {
     var reader = new ClassReader(load(NoFinalField.class));
     reader.accept(new ValueTypeChecker(issueReporter, null), 0);
     assertTrue(issueReporterCalled.called);
+  }
+
+  @Test
+  public void testPotentialValueClass() throws IOException {
+    class PotentialValueClass {
+      private final int x;
+      private final int y;
+
+      PotentialValueClass(int x, int y) {
+        this.x = x;
+        this.y = y;
+      }
+    }
+
+    IssueReporter issueReporter = (issue, className, message) -> {
+      fail("" + issue + " " + className + " " + message);
+    };
+    var reader = new ClassReader(load(PotentialValueClass.class));
+    reader.accept(new ValueTypeChecker(issueReporter, null), 0);
   }
 }
