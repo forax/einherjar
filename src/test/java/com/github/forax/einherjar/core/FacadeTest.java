@@ -176,7 +176,7 @@ public class FacadeTest {
             @Override
             public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
               assertAll(
-                  () -> assertEquals(V23, version),
+                  () -> assertEquals(V23 | 0xFFFF0000, version),
                   () -> assertEquals(0, access & ACC_SUPER)
               );
             }
@@ -184,7 +184,7 @@ public class FacadeTest {
         }
       }
     } finally {
-      System.out.println(enhancedJarFile);
+      System.err.println(enhancedJarFile);
       //Files.delete(enhancedJarFile);
       Files.delete(jarFile);
     }

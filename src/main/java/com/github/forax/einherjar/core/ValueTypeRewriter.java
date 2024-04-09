@@ -19,6 +19,6 @@ public class ValueTypeRewriter extends ClassVisitor {
   @Override
   public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
     int newAccess = access & ~ACC_IDENTITY;
-    super.visit(/*(version - 23 + V23)*/ /*| (65_535 << 16)*/ V23, newAccess, name, signature, superName, interfaces);
+    super.visit(V23 | 0xFFFF0000, newAccess, name, signature, superName, interfaces);
   }
 }
