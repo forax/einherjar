@@ -1,0 +1,25 @@
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  schedule:
+    - cron: '0 7 * * *'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java: [ '21', '22' ]
+    name: Java ${{ matrix.Java }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: setup
+        uses: actions/setup-java@v3
+        with:
+          distribution: zulu
+          java-version: ${{ matrix.java }}
+      - name: build
+        run: |
+          mvn -B verify
