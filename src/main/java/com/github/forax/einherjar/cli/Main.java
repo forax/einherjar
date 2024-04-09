@@ -86,19 +86,12 @@ public class Main {
       this.jarFile = jarFile;
     }
 
-    static private EnumMap<Option.Kind, Object> defaultOptionMap() {
-      EnumMap<Option.Kind, Object> optionMap = new EnumMap<>(Option.Kind.class);
-      optionMap.put(Option.Kind.ANNOTATION_NAME, ValueType.class.getName());
-      optionMap.put(Option.Kind.VERSION, 23);
-      return optionMap;
-    }
-
     static CmdLine parse(String[] args) throws IllegalArgumentException {
       if (args.length == 0) {
         throw new IllegalArgumentException("no action defined");
       }
       Action action = Action.parse(args[0]);
-      EnumMap<Option.Kind, Object> optionMap = defaultOptionMap();
+      EnumMap<Option.Kind, Object> optionMap = new EnumMap<>(Option.Kind.class);
       Path jarFile = null;
 
       Iterator<String> iterator = Arrays.asList(args).subList(1, args.length).iterator();
@@ -148,7 +141,7 @@ public class Main {
 
     switch (cmdLine.action) {
       case CHECK: {
-        String annotationName = (String) cmdLine.optionMap.get(Option.Kind.ANNOTATION_NAME);
+        String annotationName = (String) cmdLine.optionMap.getOrDefault(Option.Kind.ANNOTATION_NAME, ValueType.class.getName());
         Facade.check(annotationName, cmdLine.jarFile, issueReporter);
         break;
       }
@@ -159,9 +152,9 @@ public class Main {
         break;
       }
       case ENHANCE: {
-        String annotationName = (String) cmdLine.optionMap.get(Option.Kind.ANNOTATION_NAME);
+        String annotationName = (String) cmdLine.optionMap.getOrDefault(Option.Kind.ANNOTATION_NAME, ValueType.class.getName());
         Path toPath = (Path) cmdLine.optionMap.getOrDefault(Option.Kind.OUTPUT, defaultEnhancedJarName(cmdLine.jarFile));
-        int version = (int) cmdLine.optionMap.get(Option.Kind.VERSION);
+        int version = (int) cmdLine.optionMap.getOrDefault(Option.Kind.VERSION, 23);
         Facade.enhance(annotationName, cmdLine.jarFile, toPath, version, issueReporter);
         break;
       }
