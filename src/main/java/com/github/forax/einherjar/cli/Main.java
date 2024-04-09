@@ -71,7 +71,9 @@ public class Main {
       "    enhance: rewrite annotated classes to be value types using a multi-release jar\n" +
       "\n" +
       "  option:\n" +
-      "    --annotation name: set the qualified name of the annotation\n",
+      "    --annotation name: set the qualified name of the annotation\n" +
+      "    --output path: path of the enhanced jar\n" +
+      "    --version version: classfile version of the generated value class\n",
         Main.class.getName());
   }
 
@@ -135,29 +137,27 @@ public class Main {
       return;
     }
 
+    // compute default values
+    String annotationName = (String) cmdLine.optionMap.computeIfAbsent(Option.Kind.ANNOTATION_NAME, __ -> ValueType.class.getName());
+    Path toPath = (Path) cmdLine.optionMap.computeIfAbsent(Option.Kind.OUTPUT, __ -> defaultEnhancedJarName(cmdLine.jarFile));
+    int version = (int) cmdLine.optionMap.getOrDefault(Option.Kind.VERSION, 23);
+
     ValueTypeChecker.IssueReporter issueReporter = (issue, className, message) -> {
       System.err.println(issue + ": class " + className + ", " + message);
     };
 
     switch (cmdLine.action) {
-      case CHECK: {
-        String annotationName = (String) cmdLine.optionMap.getOrDefault(Option.Kind.ANNOTATION_NAME, ValueType.class.getName());
+      case CHECK:
         Facade.check(annotationName, cmdLine.jarFile, issueReporter);
-        break;
-      }
-      case FIND: {
+        return;
+      case FIND:
         Facade.find(cmdLine.jarFile, className -> {
           System.out.println("found potential value class " + className.replace('/', '.'));
         });
-        break;
-      }
-      case ENHANCE: {
-        String annotationName = (String) cmdLine.optionMap.getOrDefault(Option.Kind.ANNOTATION_NAME, ValueType.class.getName());
-        Path toPath = (Path) cmdLine.optionMap.getOrDefault(Option.Kind.OUTPUT, defaultEnhancedJarName(cmdLine.jarFile));
-        int version = (int) cmdLine.optionMap.getOrDefault(Option.Kind.VERSION, 23);
+        return;
+      case ENHANCE:
         Facade.enhance(annotationName, cmdLine.jarFile, toPath, version, issueReporter);
-        break;
-      }
+        return;
     }
   }
 }
