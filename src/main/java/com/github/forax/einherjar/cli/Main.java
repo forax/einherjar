@@ -61,8 +61,8 @@ public class Main {
   }
 
   private static String help() {
-    return String.format(
-      "java %s action [--option optionValue] jarfile\n" +
+    return
+      "java -jar target/einherjar.jar action [--option optionValue] jarfile\n" +
       "  execute the action on the jarfile\n" +
       "\n" +
       "  action:\n" +
@@ -73,8 +73,7 @@ public class Main {
       "  option:\n" +
       "    --annotation name: set the qualified name of the annotation\n" +
       "    --output path: path of the enhanced jar\n" +
-      "    --version version: classfile version of the generated value class\n",
-        Main.class.getName());
+      "    --version version: classfile version of the generated value class";
   }
 
   static final class CmdLine {
