@@ -31,6 +31,8 @@ public final class Facade {
   public static void check(String annotationName, Path path, ValueTypeChecker.IssueReporter issueReporter) throws IOException {
     Objects.requireNonNull(annotationName);
     Objects.requireNonNull(path);
+    Objects.requireNonNull(issueReporter);
+
     String annotationDescriptor = Type.getObjectType(annotationName.replace('.', '/')).getDescriptor();
     try(JarFile jarFile = new JarFile(path.toFile())) {
       for (JarEntry entry : Collections.list(jarFile.entries())) {
@@ -54,6 +56,8 @@ public final class Facade {
 
   public static void find(Path path, Consumer<String> potentialValueTypeConsumer) throws IOException {
     Objects.requireNonNull(path);
+    Objects.requireNonNull(potentialValueTypeConsumer);
+
     try(JarFile jarFile = new JarFile(path.toFile())) {
       for (JarEntry entry : Collections.list(jarFile.entries())) {
         if (!entry.getName().endsWith(".class")) {
@@ -92,9 +96,17 @@ public final class Facade {
 
   private static final String MANIFEST_NAME = "META-INF/MANIFEST.MF";
 
+  private static void checkVersion(int version) {
+    if (version < 23 || version > 99) {
+      throw new IllegalArgumentException("invalid version " + version);
+    }
+  }
+
   public static void enhance(String annotationName, Path path, Path toPath, int version, ValueTypeChecker.IssueReporter issueReporter) throws IOException {
     Objects.requireNonNull(annotationName);
     Objects.requireNonNull(path);
+    checkVersion(version);
+
     String annotationDescriptor = Type.getObjectType(annotationName.replace('.', '/')).getDescriptor();
     class DelegatingIssueChecker implements ValueTypeChecker.IssueReporter {
       boolean hasIssue;
