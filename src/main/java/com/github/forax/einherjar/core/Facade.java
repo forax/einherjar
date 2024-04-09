@@ -157,26 +157,20 @@ public final class Facade {
       // add manifest
       if (manifest == null) {
         manifest = new Manifest();
+      } else {
+        if (!manifest.getEntries().isEmpty()) {
+          throw new AssertionError("composite manifest are not supported !");
+        }
       }
-      Attributes multiReleaseAttributes = manifest.getAttributes("Multi-Release");
-      if (multiReleaseAttributes == null) {
-        multiReleaseAttributes = new Attributes();
-        manifest.getEntries().put("Multi-Release", multiReleaseAttributes);
-      }
-      multiReleaseAttributes.putValue("Multi-Release", "true");
+      Attributes mainAttributes = manifest.getMainAttributes();
+      mainAttributes.putValue("Multi-Release", "true");
 
       jarOutput.putNextEntry(new JarEntry(MANIFEST_NAME));
       OutputStreamWriter manifestWriter = new OutputStreamWriter(jarOutput, StandardCharsets.UTF_8);
-      Attributes mainAttributes = manifest.getMainAttributes();
-      if (mainAttributes != null) {
-        manifestWriter.write("Main: " + mainAttributes.getValue(Attributes.Name.MAIN_CLASS) + "\n");
-      }
-      for(Attributes attrs : manifest.getEntries().values()) {
-        for (Map.Entry<Object, Object> entry : attrs.entrySet()) {
-          Object key = entry.getKey();
-          Object value = entry.getValue();
-          manifestWriter.write(key + ": " + value + "\n");
-        }
+      for (Map.Entry<Object, Object> entry : manifest.getMainAttributes().entrySet()) {
+        Object key = entry.getKey();
+        Object value = entry.getValue();
+        manifestWriter.write(key + ": " + value + "\n");
       }
       manifestWriter.flush();
       jarOutput.closeEntry();
