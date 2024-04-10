@@ -33,5 +33,6 @@ einherjar provides several actions:
 
 and several options:
 - `--annotation name` to set the name of the annotation (e.g. com.github.forax.einherjar.api.ValueType)
+- `--classes names` to set the name of classes to be checked/enhanced (e.g. com.acme.Foo,com.acme.Bar)
 - `--output path` to set the name of the generated Einherjar
 - `--version version` to set the classfile version of the generated value classes (always in preview)
