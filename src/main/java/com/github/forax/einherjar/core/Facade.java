@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.jar.Attributes;
@@ -24,18 +25,21 @@ import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
 
+import static java.util.stream.Collectors.toSet;
+
 public final class Facade {
   private Facade() {
     throw new AssertionError();
   }
 
-  public static void check(String annotationName, Path path, ValueTypeChecker.IssueReporter issueReporter) throws IOException {
+  public static void check(String annotationName, Set<String> classSet, Path path, ValueTypeChecker.IssueReporter issueReporter) throws IOException {
     Objects.requireNonNull(annotationName);
+    Objects.requireNonNull(classSet);
     Objects.requireNonNull(path);
     Objects.requireNonNull(issueReporter);
 
     String annotationDescriptor = Type.getObjectType(annotationName.replace('.', '/')).getDescriptor();
-    Predicate<String> annotationDescriptorMatcher = annotationDescriptor::equals;
+    Set<String> internalClassSet = classSet.stream().map(name -> name.replace('.', '/')).collect(toSet());
     try(JarFile jarFile = new JarFile(path.toFile())) {
       for (JarEntry entry : Collections.list(jarFile.entries())) {
         if (!entry.getName().endsWith(".class")) {
@@ -46,7 +50,7 @@ public final class Facade {
           reader = new ClassReader(input);
         }
 
-        ClassMatcher classMatcher = new ClassMatcher(__ -> false, annotationDescriptorMatcher);
+        ClassMatcher classMatcher = new ClassMatcher(internalClassSet::contains, annotationDescriptor::equals);
         reader.accept(classMatcher, ClassReader.SKIP_CODE);
         if (classMatcher.isMatching()) {
           ValueTypeChecker valueTypeChecker = new ValueTypeChecker(issueReporter, null);
@@ -104,13 +108,14 @@ public final class Facade {
     }
   }
 
-  public static void enhance(String annotationName, Path path, Path toPath, int version, ValueTypeChecker.IssueReporter issueReporter) throws IOException {
+  public static void enhance(String annotationName, Set<String> classSet, Path path, Path toPath, int version, ValueTypeChecker.IssueReporter issueReporter) throws IOException {
     Objects.requireNonNull(annotationName);
+    Objects.requireNonNull(classSet);
     Objects.requireNonNull(path);
     checkVersion(version);
 
     String annotationDescriptor = Type.getObjectType(annotationName.replace('.', '/')).getDescriptor();
-    Predicate<String> annotationDescriptorMatcher = annotationDescriptor::equals;
+    Set<String> internalClassSet = classSet.stream().map(name -> name.replace('.', '/')).collect(toSet());
     class DelegatingIssueChecker implements ValueTypeChecker.IssueReporter {
       boolean hasIssue;
 
@@ -148,7 +153,7 @@ public final class Facade {
             reader = new ClassReader(input);
           }
 
-          ClassMatcher classMatcher = new ClassMatcher(__ -> false, annotationDescriptorMatcher);
+          ClassMatcher classMatcher = new ClassMatcher(internalClassSet::contains, annotationDescriptor::equals);
           reader.accept(classMatcher, ClassReader.SKIP_CODE);
           if (classMatcher.isMatching()) {
             ClassWriter writer = new ClassWriter(reader, 0);

@@ -8,9 +8,14 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.Set;
+
+import static java.util.Collections.unmodifiableSet;
 
 public class Main {
   enum Action {
@@ -29,6 +34,7 @@ public class Main {
   static class Option {
     enum Kind {
       ANNOTATION_NAME,
+      CLASS_SET,
       OUTPUT,
       VERSION
     }
@@ -41,16 +47,22 @@ public class Main {
       this.value = value;
     }
 
+    private static Set<String> splitAsClassSet(String classlist) {
+      String[] parts = classlist.split(" *, *");
+      return unmodifiableSet(new HashSet<>(Arrays.asList(parts)));
+    }
 
     static Option parseOption(String option, Iterator<String> optionValue) {
       try {
         switch (option) {
           case "--annotation":
             return new Option(Kind.ANNOTATION_NAME, optionValue.next());
+          case "--classes":
+            return new Option(Kind.CLASS_SET, splitAsClassSet(optionValue.next()));
           case "--output":
             return new Option(Kind.OUTPUT, Paths.get(optionValue.next()));
           case "--version":
-            return new Option(Kind.OUTPUT, optionValue.next());
+            return new Option(Kind.VERSION, Integer.parseInt(optionValue.next()));
           default:
             throw new IllegalArgumentException("unknown option " + option);
         }
@@ -72,6 +84,7 @@ public class Main {
       "\n" +
       "  option:\n" +
       "    --annotation name: set the qualified name of the annotation\n" +
+      "    --classes nameset: a comma separated set of qualified class names\n" +
       "    --output path: path of the enhanced jar\n" +
       "    --version version: classfile version of the generated value class";
   }
@@ -138,6 +151,8 @@ public class Main {
 
     // compute default values
     String annotationName = (String) cmdLine.optionMap.computeIfAbsent(Option.Kind.ANNOTATION_NAME, __ -> ValueType.class.getName());
+    @SuppressWarnings("unchecked")
+    Set<String> classSet = (Set<String>) cmdLine.optionMap.getOrDefault(Option.Kind.CLASS_SET, "");
     Path toPath = (Path) cmdLine.optionMap.computeIfAbsent(Option.Kind.OUTPUT, __ -> defaultEnhancedJarName(cmdLine.jarFile));
     int version = (int) cmdLine.optionMap.getOrDefault(Option.Kind.VERSION, 23);
 
@@ -147,7 +162,7 @@ public class Main {
 
     switch (cmdLine.action) {
       case CHECK:
-        Facade.check(annotationName, cmdLine.jarFile, issueReporter);
+        Facade.check(annotationName, classSet, cmdLine.jarFile, issueReporter);
         return;
       case FIND:
         Facade.find(cmdLine.jarFile, className -> {
@@ -155,7 +170,7 @@ public class Main {
         });
         return;
       case ENHANCE:
-        Facade.enhance(annotationName, cmdLine.jarFile, toPath, version, issueReporter);
+        Facade.enhance(annotationName, classSet, cmdLine.jarFile, toPath, version, issueReporter);
         return;
     }
   }

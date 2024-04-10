@@ -10,6 +10,7 @@ import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
@@ -124,7 +125,7 @@ public class FacadeTest {
         fromClass(GoodClassAnnotated.class));
     try {
       var counter = new Object() { int counter; };
-      Facade.check(ValueType.class.getName(), jarFile, (issue, className, message) -> {
+      Facade.check(ValueType.class.getName(), Set.of(), jarFile, (issue, className, message) -> {
         switch (className) {
           case "com/github/forax/einherjar/core/FacadeTest$BadSuperClassAnnotated" ->
             assertSame(ValueTypeChecker.Issue.UNKNOWN_SUPER, issue);
@@ -137,6 +138,28 @@ public class FacadeTest {
         counter.counter++;
       });
       assertEquals(3, counter.counter);
+    } finally {
+      Files.delete(jarFile);
+    }
+  }
+
+  @Test
+  public void testCheckClassName() throws URISyntaxException, IOException {
+    var jarFile = createTestJar(
+        fromClass(BadSuperClass.class),
+        fromClass(GoodClass.class));
+    try {
+      var counter = new Object() { int counter; };
+      var classSet = Set.of(BadSuperClass.class.getName(), GoodClass.class.getName());
+      Facade.check(ValueType.class.getName(), classSet, jarFile, (issue, className, message) -> {
+        switch (className) {
+          case "com/github/forax/einherjar/core/FacadeTest$BadSuperClass" ->
+              assertSame(ValueTypeChecker.Issue.UNKNOWN_SUPER, issue);
+          default -> throw new AssertionError(issue + " " + className + " " + message);
+        }
+        counter.counter++;
+      });
+      assertEquals(1, counter.counter);
     } finally {
       Files.delete(jarFile);
     }
@@ -162,7 +185,7 @@ public class FacadeTest {
         fromClass(GoodClassAnnotated.class));
     var enhancedJarFile = jarFile.resolveSibling("test-enhanced.jar");
     try {
-      Facade.enhance(ValueType.class.getName(), jarFile, enhancedJarFile, 23, (issue, className, message) -> {
+      Facade.enhance(ValueType.class.getName(), Set.of(), jarFile, enhancedJarFile, 23, (issue, className, message) -> {
         throw new AssertionError(issue + " " + className + " " + message);
       });
 
@@ -184,8 +207,41 @@ public class FacadeTest {
         }
       }
     } finally {
-      System.err.println(enhancedJarFile);
-      //Files.delete(enhancedJarFile);
+      Files.delete(enhancedJarFile);
+      Files.delete(jarFile);
+    }
+  }
+
+  @Test
+  public void testEnhanceClassName() throws URISyntaxException, IOException {
+    var jarFile = createTestJar(fromClass(GoodClass.class));
+    var annotationName = ValueType.class.getName();
+    var classSet = Set.of(GoodClass.class.getName());
+    var enhancedJarFile = jarFile.resolveSibling("test-enhanced.jar");
+    try {
+      Facade.enhance(annotationName, classSet, jarFile, enhancedJarFile, 23, (issue, className, message) -> {
+        throw new AssertionError(issue + " " + className + " " + message);
+      });
+
+      try(var resultJarFile = new JarFile(enhancedJarFile.toFile(), true, ZipFile.OPEN_READ, Runtime.Version.parse("23"))) {
+        assertTrue(resultJarFile.isMultiRelease());
+        var versionedEntry = resultJarFile.getJarEntry(fromClass(GoodClass.class).pathname);
+        assertNotNull(versionedEntry);
+        try(var input = resultJarFile.getInputStream(versionedEntry)) {
+          var reader = new ClassReader(input);
+          reader.accept(new ClassVisitor(ASM9) {
+            @Override
+            public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
+              assertAll(
+                  () -> assertEquals(V23 | 0xFFFF0000, version),
+                  () -> assertEquals(0, access & ACC_SUPER)
+              );
+            }
+          }, 0);
+        }
+      }
+    } finally {
+      Files.delete(enhancedJarFile);
       Files.delete(jarFile);
     }
   }

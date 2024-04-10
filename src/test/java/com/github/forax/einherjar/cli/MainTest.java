@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -20,11 +21,21 @@ public class MainTest {
   }
 
   @Test
-  public void actionCheck2() {
+  public void actionCheckWithAnnotationName() {
     var cmdLine = Main.CmdLine.parse("check --annotation bar foo.jar".split(" "));
     assertAll(
         () -> assertEquals(Main.Action.CHECK, cmdLine.action),
         () -> assertEquals(Map.of(Main.Option.Kind.ANNOTATION_NAME, "bar"), cmdLine.optionMap),
+        () -> assertEquals(Path.of("foo.jar"), cmdLine.jarFile)
+    );
+  }
+
+  @Test
+  public void actionCheckWithClassSet() {
+    var cmdLine = Main.CmdLine.parse("check --classes bar,baz foo.jar".split(" "));
+    assertAll(
+        () -> assertEquals(Main.Action.CHECK, cmdLine.action),
+        () -> assertEquals(Map.of(Main.Option.Kind.CLASS_SET, Set.of("bar","baz")), cmdLine.optionMap),
         () -> assertEquals(Path.of("foo.jar"), cmdLine.jarFile)
     );
   }
@@ -50,11 +61,41 @@ public class MainTest {
   }
 
   @Test
-  public void actionEnhance2() {
+  public void actionEnhanceWithAnnotationName() {
     var cmdLine = Main.CmdLine.parse("enhance --annotation bar foo.jar".split(" "));
     assertAll(
         () -> assertEquals(Main.Action.ENHANCE, cmdLine.action),
         () -> assertEquals(Map.of(Main.Option.Kind.ANNOTATION_NAME, "bar"), cmdLine.optionMap),
+        () -> assertEquals(Path.of("foo.jar"), cmdLine.jarFile)
+    );
+  }
+
+  @Test
+  public void actionEnhanceWithClassSet() {
+    var cmdLine = Main.CmdLine.parse("enhance --classes bar,baz foo.jar".split(" "));
+    assertAll(
+        () -> assertEquals(Main.Action.ENHANCE, cmdLine.action),
+        () -> assertEquals(Map.of(Main.Option.Kind.CLASS_SET, Set.of("bar", "baz")), cmdLine.optionMap),
+        () -> assertEquals(Path.of("foo.jar"), cmdLine.jarFile)
+    );
+  }
+
+  @Test
+  public void actionEnhanceWithOutput() {
+    var cmdLine = Main.CmdLine.parse("enhance --output out.jar foo.jar".split(" "));
+    assertAll(
+        () -> assertEquals(Main.Action.ENHANCE, cmdLine.action),
+        () -> assertEquals(Map.of(Main.Option.Kind.OUTPUT, Path.of("out.jar")), cmdLine.optionMap),
+        () -> assertEquals(Path.of("foo.jar"), cmdLine.jarFile)
+    );
+  }
+
+  @Test
+  public void actionEnhanceWithVersion() {
+    var cmdLine = Main.CmdLine.parse("enhance --version 23 foo.jar".split(" "));
+    assertAll(
+        () -> assertEquals(Main.Action.ENHANCE, cmdLine.action),
+        () -> assertEquals(Map.of(Main.Option.Kind.VERSION, 23), cmdLine.optionMap),
         () -> assertEquals(Path.of("foo.jar"), cmdLine.jarFile)
     );
   }
