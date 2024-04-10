@@ -8,12 +8,13 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import static java.util.Collections.unmodifiableSet;
 
@@ -31,18 +32,21 @@ public class Main {
     }
   }
 
-  static class Option {
-    enum Kind {
-      ANNOTATION_NAME,
-      CLASS_SET,
-      OUTPUT,
-      VERSION
+  static class Option<T> {
+    static final class Kind<T> {
+      public static final Kind<String> ANNOTATION_NAME = new Kind<>();
+      public static final Kind<Set<String>> CLASS_SET = new Kind<>();
+      public static final Kind<Path> OUTPUT = new Kind<>();
+      public static final Kind<Integer> VERSION = new Kind<>();
+
+      private Kind() {
+      }
     }
 
-    final Kind kind;
-    final Object value;
+    final Kind<T> kind;
+    final T value;
 
-    Option(Kind kind, Object value) {
+    Option(Kind<T> kind, T value) {
       this.kind = kind;
       this.value = value;
     }
@@ -52,17 +56,17 @@ public class Main {
       return unmodifiableSet(new HashSet<>(Arrays.asList(parts)));
     }
 
-    static Option parseOption(String option, Iterator<String> optionValue) {
+    static Option<?> parseOption(String option, Iterator<String> optionValue) {
       try {
         switch (option) {
           case "--annotation":
-            return new Option(Kind.ANNOTATION_NAME, optionValue.next());
+            return new Option<>(Kind.ANNOTATION_NAME, optionValue.next());
           case "--classes":
-            return new Option(Kind.CLASS_SET, splitAsClassSet(optionValue.next()));
+            return new Option<>(Kind.CLASS_SET, splitAsClassSet(optionValue.next()));
           case "--output":
-            return new Option(Kind.OUTPUT, Paths.get(optionValue.next()));
+            return new Option<>(Kind.OUTPUT, Paths.get(optionValue.next()));
           case "--version":
-            return new Option(Kind.VERSION, Integer.parseInt(optionValue.next()));
+            return new Option<>(Kind.VERSION, Integer.parseInt(optionValue.next()));
           default:
             throw new IllegalArgumentException("unknown option " + option);
         }
@@ -91,13 +95,18 @@ public class Main {
 
   static final class CmdLine {
     final Action action;
-    final EnumMap<Option.Kind, Object> optionMap;
+    final Map<Option.Kind<?>, Object> optionMap;
     final Path jarFile;
 
-    CmdLine(Action action, EnumMap<Option.Kind, Object> optionMap, Path jarFile) {
+    CmdLine(Action action, Map<Option.Kind<?>, Object> optionMap, Path jarFile) {
       this.action = action;
       this.optionMap = optionMap;
       this.jarFile = jarFile;
+    }
+
+    @SuppressWarnings("unchecked")
+    <T> T getOptionValue(Option.Kind<T> kind, Supplier<? extends T> supplier) {
+      return (T) optionMap.computeIfAbsent(kind, __ -> supplier.get());
     }
 
     static CmdLine parse(String[] args) throws IllegalArgumentException {
@@ -105,7 +114,7 @@ public class Main {
         throw new IllegalArgumentException("no action defined");
       }
       Action action = Action.parse(args[0]);
-      EnumMap<Option.Kind, Object> optionMap = new EnumMap<>(Option.Kind.class);
+      HashMap<Option.Kind<?>, Object> optionMap = new HashMap<>();
       Path jarFile = null;
 
       Iterator<String> iterator = Arrays.asList(args).subList(1, args.length).iterator();
@@ -118,9 +127,9 @@ public class Main {
           jarFile = Paths.get(optionName);
           break;
         }
-        Option option = Option.parseOption(optionName, iterator);
+        Option<?> option = Option.parseOption(optionName, iterator);
         if (optionMap.putIfAbsent(option.kind, option.value) != null) {
-          throw new IllegalArgumentException("option " + option + " defined twice");
+          throw new IllegalArgumentException("option " + optionName + " defined twice");
         }
       }
 
@@ -150,11 +159,10 @@ public class Main {
     }
 
     // compute default values
-    String annotationName = (String) cmdLine.optionMap.computeIfAbsent(Option.Kind.ANNOTATION_NAME, __ -> ValueType.class.getName());
-    @SuppressWarnings("unchecked")
-    Set<String> classSet = (Set<String>) cmdLine.optionMap.getOrDefault(Option.Kind.CLASS_SET, "");
-    Path toPath = (Path) cmdLine.optionMap.computeIfAbsent(Option.Kind.OUTPUT, __ -> defaultEnhancedJarName(cmdLine.jarFile));
-    int version = (int) cmdLine.optionMap.getOrDefault(Option.Kind.VERSION, 23);
+    String annotationName = cmdLine.getOptionValue(Option.Kind.ANNOTATION_NAME, ValueType.class::getName);
+    Set<String> classSet = cmdLine.getOptionValue(Option.Kind.CLASS_SET, HashSet::new);
+    Path toPath = cmdLine.getOptionValue(Option.Kind.OUTPUT, () -> defaultEnhancedJarName(cmdLine.jarFile));
+    int version = cmdLine.getOptionValue(Option.Kind.VERSION, () -> 23);
 
     ValueTypeChecker.IssueReporter issueReporter = (issue, className, message) -> {
       System.err.println(issue + ": class " + className + ", " + message);
