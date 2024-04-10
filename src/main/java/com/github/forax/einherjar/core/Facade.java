@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -34,6 +35,7 @@ public final class Facade {
     Objects.requireNonNull(issueReporter);
 
     String annotationDescriptor = Type.getObjectType(annotationName.replace('.', '/')).getDescriptor();
+    Predicate<String> annotationDescriptorMatcher = annotationDescriptor::equals;
     try(JarFile jarFile = new JarFile(path.toFile())) {
       for (JarEntry entry : Collections.list(jarFile.entries())) {
         if (!entry.getName().endsWith(".class")) {
@@ -44,9 +46,9 @@ public final class Facade {
           reader = new ClassReader(input);
         }
 
-        IsClassAnnotated isClassAnnotated = new IsClassAnnotated(annotationDescriptor);
-        reader.accept(isClassAnnotated, ClassReader.SKIP_CODE);
-        if (isClassAnnotated.isAnnotated()) {
+        ClassMatcher classMatcher = new ClassMatcher(__ -> false, annotationDescriptorMatcher);
+        reader.accept(classMatcher, ClassReader.SKIP_CODE);
+        if (classMatcher.isMatching()) {
           ValueTypeChecker valueTypeChecker = new ValueTypeChecker(issueReporter, null);
           reader.accept(valueTypeChecker, ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
         }
@@ -108,6 +110,7 @@ public final class Facade {
     checkVersion(version);
 
     String annotationDescriptor = Type.getObjectType(annotationName.replace('.', '/')).getDescriptor();
+    Predicate<String> annotationDescriptorMatcher = annotationDescriptor::equals;
     class DelegatingIssueChecker implements ValueTypeChecker.IssueReporter {
       boolean hasIssue;
 
@@ -145,9 +148,9 @@ public final class Facade {
             reader = new ClassReader(input);
           }
 
-          IsClassAnnotated isClassAnnotated = new IsClassAnnotated(annotationDescriptor);
-          reader.accept(isClassAnnotated, ClassReader.SKIP_CODE);
-          if (isClassAnnotated.isAnnotated()) {
+          ClassMatcher classMatcher = new ClassMatcher(__ -> false, annotationDescriptorMatcher);
+          reader.accept(classMatcher, ClassReader.SKIP_CODE);
+          if (classMatcher.isMatching()) {
             ClassWriter writer = new ClassWriter(reader, 0);
             ValueTypeRewriter rewriter = new ValueTypeRewriter(writer, version);
             ValueTypeChecker valueTypeChecker = new ValueTypeChecker(delegatingIssueChecker, rewriter);
