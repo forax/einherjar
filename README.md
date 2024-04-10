@@ -29,7 +29,7 @@ Running einherjar with no action, prints the help
 einherjar provides several actions:
 - `find` that helps you find the potential value classes,
 - `check` that verifies that the annotated classes can be transformed to value classes,
-- `enhance` that generate the Einherjar.
+- `enhance` that generates the Einherjar.
 
 and several options:
 - `--annotation name` to set the name of the annotation (e.g. com.github.forax.einherjar.api.ValueType)
